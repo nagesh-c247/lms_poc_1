@@ -9,6 +9,11 @@ const Content = require('./contentModel');
 const bucketName = 'lms-poc-c247';
 const redis = require('redis');
 const mime = require('mime-types');
+const ffmpeg = require('fluent-ffmpeg');
+const fs = require('fs').promises;
+const path = require('path');
+const os = require('os');
+
 app.use(cors({ origin: 'http://localhost:3000' ,exposedHeaders: ["x-session-id"]}));
 app.use(express.json());
 
@@ -121,12 +126,126 @@ app.get('/api/content', async (req, res) => {
 
 })
 //without encryption apis
-app.post("/api/upload",authenticateJWT, async (req, res,next) => {
+// app.post("/api/upload",authenticateJWT, async (req, res,next) => {
+//   try {
+//     if (req.user.role !== "admin") return res.status(403).send("Forbidden");
+//     const filename = req.headers['x-file-name'];
+//     console.log('Upload request by user:');
+//     // Step 1: Initiate multipart upload
+//     const createRes = await s3.createMultipartUpload({
+//       Bucket: bucketName,
+//       Key: `videos/${Date.now()}.mp4`,
+//     }).promise();
+
+//     const uploadId = createRes.UploadId;
+//     const parts = [];
+//     let partNumber = 1;
+
+//     const CHUNK_SIZE = 5 * 1024 * 1024; // 5MB
+//     let buffer = Buffer.alloc(0);
+
+//     for await (const chunk of req) {
+//       buffer = Buffer.concat([buffer, chunk]);
+
+//       while (buffer.length >= CHUNK_SIZE) {
+//         const piece = buffer.subarray(0, CHUNK_SIZE);
+//         buffer = buffer.subarray(CHUNK_SIZE);
+
+//         const uploadRes = await s3.uploadPart({
+//           Bucket: bucketName,
+//           Key: createRes.Key,
+//           UploadId: uploadId,
+//           PartNumber: partNumber,
+//           Body: piece,
+//         }).promise();
+
+//         parts.push({ ETag: uploadRes.ETag, PartNumber: partNumber });
+//         partNumber++;
+//       }
+//     }
+
+//     // Handle leftover
+//     if (buffer.length > 0) {
+//       const uploadRes = await s3.uploadPart({
+//         Bucket: bucketName,
+//         Key: createRes.Key,
+//         UploadId: uploadId,
+//         PartNumber: partNumber,
+//         Body: buffer,
+//       }).promise();
+
+//       parts.push({ ETag: uploadRes.ETag, PartNumber: partNumber });
+//     }
+
+//     // Step 2: Complete upload
+//     await s3.completeMultipartUpload({
+//       Bucket: bucketName,
+//       Key: createRes.Key,
+//       UploadId: uploadId,
+//       MultipartUpload: { Parts: parts },
+//     }).promise();
+
+//     // Save metadata
+//     const content = new Content({
+//       title: filename,
+//       s3Key: createRes.Key,
+     
+//       allowedRoles: ["parent", "child","admin"],
+//     });
+//     await content.save();
+
+//     res.json({ contentId: content._id, key: createRes.Key });
+//   } catch (err) {
+//     console.error("Upload error:", err);
+//     res.status(500).send("Upload failed");
+//   }
+// });
+
+app.post("/api/upload", authenticateJWT, async (req, res, next) => {
   try {
     if (req.user.role !== "admin") return res.status(403).send("Forbidden");
+
     const filename = req.headers['x-file-name'];
-    console.log('Upload request by user:');
-    // Step 1: Initiate multipart upload
+    console.log('Upload request by user:', req.user);
+
+    // Create temporary file paths
+    const tempInputFile = path.join(os.tmpdir(), `input-${Date.now()}.mp4`);
+    const tempOutputFile = path.join(os.tmpdir(), `output-${Date.now()}.mp4`);
+
+    // Step 1: Save incoming chunks to a temporary file
+    const writeStream = require('fs').createWriteStream(tempInputFile);
+    for await (const chunk of req) {
+      writeStream.write(chunk);
+    }
+    writeStream.end();
+    await new Promise((resolve, reject) => {
+      writeStream.on('finish', resolve);
+      writeStream.on('error', reject);
+    });
+
+    // Step 2: Process the file with FFmpeg (e.g., transcode to H.264)
+    await new Promise((resolve, reject) => {
+      ffmpeg(tempInputFile)
+        .videoCodec('libx264') // Use H.264 codec
+        .audioCodec('aac') // Use AAC audio codec
+        .format('mp4') // Output format
+        .outputOptions([
+          '-movflags faststart', // Optimize for web streaming
+          '-preset fast', // Encoding speed vs. compression
+          '-crf 23', // Constant Rate Factor (quality, lower is better)
+        ])
+        .save(tempOutputFile)
+        .on('end', () => {
+          console.log('FFmpeg processing complete');
+          resolve();
+        })
+        .on('error', (err) => {
+          console.error('FFmpeg error:', err);
+          reject(err);
+        });
+    });
+
+    // Step 3: Initiate multipart upload to S3
     const createRes = await s3.createMultipartUpload({
       Bucket: bucketName,
       Key: `videos/${Date.now()}.mp4`,
@@ -137,42 +256,29 @@ app.post("/api/upload",authenticateJWT, async (req, res,next) => {
     let partNumber = 1;
 
     const CHUNK_SIZE = 5 * 1024 * 1024; // 5MB
-    let buffer = Buffer.alloc(0);
+    const fileBuffer = await fs.readFile(tempOutputFile);
+    let buffer = Buffer.from(fileBuffer);
+    let start = 0;
 
-    for await (const chunk of req) {
-      buffer = Buffer.concat([buffer, chunk]);
+    // Step 4: Upload processed file in chunks
+    while (start < buffer.length) {
+      const end = Math.min(start + CHUNK_SIZE, buffer.length);
+      const piece = buffer.subarray(start, end);
 
-      while (buffer.length >= CHUNK_SIZE) {
-        const piece = buffer.subarray(0, CHUNK_SIZE);
-        buffer = buffer.subarray(CHUNK_SIZE);
-
-        const uploadRes = await s3.uploadPart({
-          Bucket: bucketName,
-          Key: createRes.Key,
-          UploadId: uploadId,
-          PartNumber: partNumber,
-          Body: piece,
-        }).promise();
-
-        parts.push({ ETag: uploadRes.ETag, PartNumber: partNumber });
-        partNumber++;
-      }
-    }
-
-    // Handle leftover
-    if (buffer.length > 0) {
       const uploadRes = await s3.uploadPart({
         Bucket: bucketName,
         Key: createRes.Key,
         UploadId: uploadId,
         PartNumber: partNumber,
-        Body: buffer,
+        Body: piece,
       }).promise();
 
       parts.push({ ETag: uploadRes.ETag, PartNumber: partNumber });
+      partNumber++;
+      start += CHUNK_SIZE;
     }
 
-    // Step 2: Complete upload
+    // Step 5: Complete multipart upload
     await s3.completeMultipartUpload({
       Bucket: bucketName,
       Key: createRes.Key,
@@ -180,20 +286,35 @@ app.post("/api/upload",authenticateJWT, async (req, res,next) => {
       MultipartUpload: { Parts: parts },
     }).promise();
 
-    // Save metadata
+    // Step 6: Save metadata
     const content = new Content({
       title: filename,
       s3Key: createRes.Key,
-     
-      allowedRoles: ["parent", "child","admin"],
+      allowedRoles: ["parent", "child", "admin"],
     });
     await content.save();
+
+    // Step 7: Clean up temporary files
+    await Promise.all([
+      fs.unlink(tempInputFile).catch((err) => console.error('Failed to delete input file:', err)),
+      fs.unlink(tempOutputFile).catch((err) => console.error('Failed to delete output file:', err)),
+    ]);
 
     res.json({ contentId: content._id, key: createRes.Key });
   } catch (err) {
     console.error("Upload error:", err);
+
+    // Clean up temporary files in case of error
+    const tempInputFile = path.join(os.tmpdir(), `input-${Date.now()}.mp4`);
+    const tempOutputFile = path.join(os.tmpdir(), `output-${Date.now()}.mp4`);
+    await Promise.all([
+      fs.unlink(tempInputFile).catch(() => {}),
+      fs.unlink(tempOutputFile).catch(() => {}),
+    ]);
+
     res.status(500).send("Upload failed");
   }
+
 });
 
 
@@ -283,7 +404,7 @@ app.get('/api/stream/:id', async (req, res) => {
     // Parse range
     const match = range.match(/bytes=(\d+)-(\d*)/);
     const start = parseInt(match[1], 10);
-    const end = match[2] ? parseInt(match[2], 10) : start + 10 ** 6; // 1MB default chunk
+    const end = match[2] ? parseInt(match[2], 10) : start + 2*10 ** 6; // 1MB default chunk
 
     // Get object metadata
     const headRes = await s3.headObject({

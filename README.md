@@ -11,6 +11,7 @@ The project has two parts: **Frontend (React)** and **Backend (Node.js/Express)*
 - **Database**: MongoDB
 - **Cache**: Redis (port 6379)
 - **Storage**: AWS S3 (for videos)
+- **Transcoding**: FFmpeg (for video processing)
 
 ---
 
@@ -44,6 +45,29 @@ Make sure Redis is running locally on **port 6379**:
 redis-server
 ```
 
+### 5. FFmpeg Setup
+FFmpeg is required for video transcoding and processing.  
+
+#### Install FFmpeg on Linux (Ubuntu/Debian)
+```
+sudo apt update
+sudo apt install ffmpeg -y
+```
+
+#### Install FFmpeg on Mac (Homebrew)
+```
+brew install ffmpeg
+```
+
+#### Install FFmpeg on Windows
+1. Download from: https://ffmpeg.org/download.html
+2. Extract and add the `bin` folder to your **PATH** environment variable.
+
+Verify installation:
+```
+ffmpeg -version
+```
+
 ---
 
 ## 🔑 Login Credentials
@@ -64,7 +88,7 @@ You can use the following test accounts:
 project-root/
 │── backend/         # Express + Node.js API
 │   └── server.js
-│── frontnew/        # React app
+│── frontend/        # React app
 │── README.md
 ```
 
@@ -75,6 +99,7 @@ project-root/
 - Multipart video upload to AWS S3
 - Video streaming with **range requests**
 - Redis caching for performance
+- Video transcoding with FFmpeg
 - Secure access with JWT authentication
 
 ---
@@ -82,3 +107,4 @@ project-root/
 ## 📝 Notes
 - Ensure MongoDB is running locally or update `.env` with your connection string.
 - Update `.env` in backend with your AWS S3 credentials and secret keys.
+- FFmpeg must be installed and accessible in your system PATH.
