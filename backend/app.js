@@ -8,6 +8,7 @@ const crypto = require('crypto');
 const Content = require('./contentModel');
 const bucketName = 'lms-poc-c247';
 const redis = require('redis');
+const mime = require('mime-types');
 app.use(cors({ origin: 'http://localhost:3000' }));
 app.use(express.json());
 
@@ -62,7 +63,9 @@ app.post('/api/signin', async (req, res) => {
     // }
 
     const token = signJwtForUser(user);
-    res.json({ token });
+    res.json({ token,
+      user
+     });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Internal server error' });
@@ -88,7 +91,19 @@ app.post('/api/signup', async (req, res) => {
   }
 });
 
+//fetch all content
+app.get('/api/content', async (req, res) => {
+  try {
+    const contents = await Content.find({});
+    res.status(200).json({
+      contents
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
 
+})
 //without encryption apis
 app.post("/api/upload",authenticateJWT, async (req, res,next) => {
   try {
@@ -165,10 +180,11 @@ app.post("/api/upload",authenticateJWT, async (req, res,next) => {
 });
 
 
-app.get('/stream/:id', async (req, res) => {
+app.get('/api/stream/:id', async (req, res) => {
   const startTime = Date.now();
   try {
     const contentId = req.params.id;
+    console.log(contentId)
     const sessionId = req.query.session;
     let role, content;
 
@@ -179,7 +195,7 @@ app.get('/stream/:id', async (req, res) => {
       content = JSON.parse(contentData);
       console.log(`Content cache hit for ID: ${contentId}`);
     } else {
-      content = await Content.findById(contentId).lean(); // Use lean() for faster queries
+      content = await Content.findById(contentId); // Use lean() for faster queries
       if (!content) {
         console.error('Content not found in MongoDB');
         return res.status(404).send('Not found');
@@ -234,10 +250,10 @@ app.get('/stream/:id', async (req, res) => {
     }
 
     // Check role
-    if (!content.allowedRoles.includes(role)) {
-      console.error(`Forbidden: User role ${role} not allowed`);
-      return res.status(403).send('Forbidden');
-    }
+    // if (!content.allowedRoles.includes(role)) {
+    //   console.error(`Forbidden: User role ${role} not allowed`);
+    //   return res.status(403).send('Forbidden');
+    // }
 
     // Handle range request
     const range = req.headers.range;
