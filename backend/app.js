@@ -9,7 +9,7 @@ const Content = require('./contentModel');
 const bucketName = 'lms-poc-c247';
 const redis = require('redis');
 const mime = require('mime-types');
-app.use(cors({ origin: 'http://localhost:3000' }));
+app.use(cors({ origin: 'http://localhost:3000' ,exposedHeaders: ["x-session-id"]}));
 app.use(express.json());
 
 
@@ -90,6 +90,22 @@ app.post('/api/signup', async (req, res) => {
     res.status(500).json({ error: 'Internal server error' });
   }
 });
+
+// Logout API
+app.post('/api/logout', authenticateJWT, async (req, res) => {
+  try {
+    const sessionId = req.headers['x-session-id'];
+    if (sessionId) {
+      await redisClient.del(`session:${sessionId}`);
+      console.log(`Session ${sessionId} invalidated`);
+    }
+    res.json({ message: 'Logged out successfully' });
+  } catch (err) {
+    console.error('Logout error:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 
 //fetch all content
 app.get('/api/content', async (req, res) => {
@@ -207,6 +223,7 @@ app.get('/api/stream/:id', async (req, res) => {
 
     // Check session or token
     if (sessionId) {
+      console.log('Session ID provided:', sessionId);
       const sessionKey = `session:${sessionId}`;
       const sessionData = await redisClient.get(sessionKey);
       if (sessionData) {
@@ -247,7 +264,7 @@ app.get('/api/stream/:id', async (req, res) => {
         contentId,
       })); // 5-minute expiration
       console.log(`Session created: ${newSessionId}, role: ${role}`);
-      res.setHeader('X-Session-ID', newSessionId); // Send session ID
+      res.setHeader('x-session-id', newSessionId); // Send session ID
     }
 
     // Check role

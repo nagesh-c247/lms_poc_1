@@ -19,6 +19,7 @@ const VideoPlayer = () => {
       if (!contentId || !token) return;
 
       try {
+        console.log("Testing video endpoint with URL:", videoUrl);
         const response = await axios.head(videoUrl, {
           headers: {
             // Authorization header might be optional since token is in URL
@@ -29,9 +30,11 @@ const VideoPlayer = () => {
 
         console.log("Video endpoint test successful:", response.headers);
         const newSessionId = response.headers["x-session-id"];
+        console.log("X-Session-ID from response headers:", newSessionId);
         if (newSessionId) {
           console.log("Received session ID:", newSessionId);
           setSessionId(newSessionId);
+          localStorage.setItem("sessionId", newSessionId); // 🔹 store in localStorage
         }
       } catch (err) {
         console.error(
