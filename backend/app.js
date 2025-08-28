@@ -108,6 +108,7 @@ app.get('/api/content', async (req, res) => {
 app.post("/api/upload",authenticateJWT, async (req, res,next) => {
   try {
     if (req.user.role !== "admin") return res.status(403).send("Forbidden");
+    const filename = req.headers['x-file-name'];
     console.log('Upload request by user:');
     // Step 1: Initiate multipart upload
     const createRes = await s3.createMultipartUpload({
@@ -165,10 +166,10 @@ app.post("/api/upload",authenticateJWT, async (req, res,next) => {
 
     // Save metadata
     const content = new Content({
-      title: "Multipart Video",
+      title: filename,
       s3Key: createRes.Key,
      
-      allowedRoles: ["parent", "child"],
+      allowedRoles: ["parent", "child","admin"],
     });
     await content.save();
 
@@ -250,10 +251,10 @@ app.get('/api/stream/:id', async (req, res) => {
     }
 
     // Check role
-    // if (!content.allowedRoles.includes(role)) {
-    //   console.error(`Forbidden: User role ${role} not allowed`);
-    //   return res.status(403).send('Forbidden');
-    // }
+    if (!content.allowedRoles.includes(role)) {
+      console.error(`Forbidden: User role ${role} not allowed`);
+      return res.status(403).send('Forbidden');
+    }
 
     // Handle range request
     const range = req.headers.range;

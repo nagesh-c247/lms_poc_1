@@ -1,10 +1,11 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import SignIn from "./components/SignIn";
 import UploadVideo from "./components/UploadVideo";
 import VideoList from "./components/VideoList";
 import VideoPlayer from "./components/VideoPlayer";
 import Navbar from "./components/Navbar";
+import api from "./api";
 
 function PrivateRoute({ children }) {
   return localStorage.getItem("token") ? children : <Navigate to="/signin" />;
@@ -15,12 +16,13 @@ function AdminRoute({ children }) {
   return user.role === "admin" ? children : <Navigate to="/" />;
 }
 
-function Dashboard({ user, setVideos }) {
+function Dashboard({ user, videos, fetchVideos, setVideos }) {
   if (!user) return null; // prevent blank screen
+
   return (
     <div className="p-4">
-      {user.role === "admin" && <UploadVideo onUploaded={setVideos} />}
-      <VideoList refreshVideos={setVideos} />
+      {user.role === "admin" && <UploadVideo onUploaded={fetchVideos} />}
+      <VideoList videos={videos} />
     </div>
   );
 }
@@ -32,6 +34,23 @@ function App() {
   });
 
   const [videos, setVideos] = useState([]);
+
+  const fetchVideos = async () => {
+    try {
+      const res = await api.get("/content", {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+      });
+      setVideos(res.data.contents);
+    } catch (err) {
+      console.error("Error fetching videos:", err.response?.data || err.message);
+    }
+  };
+
+  useEffect(() => {
+    if (user) fetchVideos();
+  }, [user]);
 
   const handleLogout = () => {
     localStorage.clear();
@@ -51,7 +70,12 @@ function App() {
           path="/"
           element={
             <PrivateRoute>
-              <Dashboard user={user} setVideos={setVideos} />
+              <Dashboard
+                user={user}
+                videos={videos}
+                fetchVideos={fetchVideos}
+                setVideos={setVideos}
+              />
             </PrivateRoute>
           }
         />
@@ -61,7 +85,7 @@ function App() {
           element={
             <PrivateRoute>
               <AdminRoute>
-                <UploadVideo onUploaded={setVideos} />
+                <UploadVideo onUploaded={fetchVideos} />
               </AdminRoute>
             </PrivateRoute>
           }

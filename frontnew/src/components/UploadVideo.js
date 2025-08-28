@@ -20,7 +20,14 @@ export default function UploadVideo({ onUploaded }) {
       });
 
       setStatus("Upload complete ✅");
-      if (onUploaded) onUploaded(res.data); // notify parent
+
+      // 👇 notify parent to refresh VideoList
+      if (onUploaded) {
+        onUploaded(res.data); 
+      }
+
+      // reset file input
+      setFile(null);
     } catch (err) {
       console.error("Upload error:", err.response?.data || err.message);
       setStatus("Upload failed ❌");
@@ -30,13 +37,13 @@ export default function UploadVideo({ onUploaded }) {
   return (
     <div className="p-4 bg-gray-100 rounded-lg mb-4">
       <h2 className="font-bold">Upload Video (Admin)</h2>
-      
+
       <input
         type="file"
         accept="video/*"
         onChange={(e) => setFile(e.target.files[0])}
       />
-      
+
       <button
         onClick={handleUpload}
         disabled={!file}
@@ -44,7 +51,7 @@ export default function UploadVideo({ onUploaded }) {
       >
         {file ? "Upload" : "Choose File First"}
       </button>
-      
+
       <p>{status}</p>
     </div>
   );
