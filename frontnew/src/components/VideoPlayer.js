@@ -4,8 +4,8 @@ import axios from "axios";
 
 const VideoPlayer = () => {
   const { id: contentId } = useParams();
-  const token = localStorage.getItem("token");
-  const [sessionId, setSessionId] = useState(localStorage.getItem("sessionId"));
+  const token = localStorage.getItem("token"); // ✅ token stays in localStorage
+  const [sessionId, setSessionId] = useState(sessionStorage.getItem("sessionId")); // ✅ per-tab session
   const [videoUrl, setVideoUrl] = useState("");
   const [error, setError] = useState(null);
   const videoRef = useRef(null);
@@ -29,7 +29,7 @@ const VideoPlayer = () => {
       const newSessionId = res.headers["x-session-id"];
       if (newSessionId) {
         setSessionId(newSessionId);
-        localStorage.setItem("sessionId", newSessionId);
+        sessionStorage.setItem("sessionId", newSessionId); // ✅ store only in sessionStorage
 
         const url = getVideoUrl(newSessionId);
         setVideoUrl(url);
@@ -52,14 +52,11 @@ const VideoPlayer = () => {
         },
       });
 
- 
-
       const newSessionId = res.headers["x-session-id"];
-     
       if (newSessionId && newSessionId !== sessionId) {
         console.log("🔄 Session rotated:", newSessionId);
         setSessionId(newSessionId);
-        localStorage.setItem("sessionId", newSessionId);
+        sessionStorage.setItem("sessionId", newSessionId); // ✅ update sessionStorage
       }
     } catch (err) {
       console.error("❌ Session check failed:", err.message);

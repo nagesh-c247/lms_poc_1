@@ -1,11 +1,11 @@
 const express = require('express');
 const cors = require('cors');
 const app = express();
-const User = require('./userModel');
+const User = require('./models/userModel');
 const jwt = require('jsonwebtoken');
-const s3 = require('./awsConf'); // AWS S3 configuration
+const s3 = require('./configs/awsConf'); // AWS S3 configuration
 const crypto = require('crypto');
-const Content = require('./contentModel');
+const Content = require('./models/contentModel');
 const bucketName = 'lms-poc-c247';
 const redis = require('redis');
 const mime = require('mime-types');
