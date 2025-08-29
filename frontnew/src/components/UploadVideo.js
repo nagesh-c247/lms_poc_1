@@ -40,7 +40,7 @@ export default function UploadVideo({ onUploaded }) {
 
       <input
         type="file"
-        accept="video/*"
+        accept=""
         onChange={(e) => setFile(e.target.files[0])}
       />
 
