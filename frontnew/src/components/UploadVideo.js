@@ -5,13 +5,17 @@ export default function UploadVideo({ onUploaded }) {
   const [file, setFile] = useState(null);
   const [status, setStatus] = useState("");
 
-  const handleUpload = async () => {
+  const handleUpload = async (e) => {
     if (!file) return;
 
     try {
       setStatus("Uploading...");
+      let Path="/upload"
+      if(e.target.value=='abr'){
+        Path="/uploadabr"
+      };
 
-      const res = await api.post("/upload", file, {
+      const res = await api.post(Path, file, {
         headers: {
           "Content-Type": file.type || "application/octet-stream", // dynamic MIME
           "x-file-name": file.name, // backend requires file name
@@ -50,6 +54,14 @@ export default function UploadVideo({ onUploaded }) {
         className="bg-blue-500 text-white px-3 py-1 rounded ml-2 disabled:opacity-50"
       >
         {file ? "Upload" : "Choose File First"}
+      </button>
+      <button
+        onClick={handleUpload}
+        disabled={!file}
+        value={"abr"}
+        className="bg-blue-500 text-white px-3 py-1 rounded ml-2 disabled:opacity-50"
+      >
+        {file ? "Upload for ABR" : "Choose File First"}
       </button>
 
       <p>{status}</p>

@@ -6,6 +6,8 @@ import VideoList from "./components/VideoList";
 import VideoPlayer from "./components/VideoPlayer";
 import Navbar from "./components/Navbar";
 import api from "./api";
+import VideoListABR from "./components/VideoListABR";
+import VideoPlayerABR from "./components/VideoPlayerABR";
 
 function PrivateRoute({ children }) {
   return localStorage.getItem("token") ? children : <Navigate to="/signin" />;
@@ -23,6 +25,7 @@ function Dashboard({ user, videos, fetchVideos, setVideos }) {
     <div className="p-4">
       {user.role === "admin" && <UploadVideo onUploaded={fetchVideos} />}
       <VideoList videos={videos} />
+      <VideoListABR />
     </div>
   );
 }
@@ -98,6 +101,14 @@ function App() {
               <VideoPlayer />
             </PrivateRoute>
           }
+        />
+        <Route
+        path="/playerabr/:id"
+        element={
+          <PrivateRoute>
+            <VideoPlayerABR />
+          </PrivateRoute>
+        }
         />
 
         <Route path="*" element={<Navigate to="/" />} />

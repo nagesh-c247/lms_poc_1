@@ -1,79 +1,59 @@
 # Video Streaming LMS
 
-This is a Proof of Concept (POC) for a secure video streaming system built using **MERN Stack** with **Redis caching**.  
-The project has two parts: **Frontend (React)** and **Backend (Node.js/Express)**.  
+This is a Proof of Concept (POC) for a secure video streaming system built using the **MERN Stack**, with **Kafka** for event streaming, **Redis** for caching/pub-sub, and **FFmpeg** for video transcoding.
 
 ---
 
-## 🚀 Tech Stack
-- **Frontend**: React (localhost:3000)
-- **Backend**: Node.js + Express (localhost:8000)
-- **Database**: MongoDB
-- **Cache**: Redis (port 6379)
-- **Storage**: AWS S3 (for videos)
-- **Transcoding**: FFmpeg (for video processing)
+## Tech Stack
+- Frontend: React (http://localhost:3000)
+- Backend: Node.js + Express (http://localhost:8000)
+- Database: MongoDB
+- Cache: Redis (port 6379)
+- Message Broker: Kafka (port 9092, Zookeeper on 2181)
+- Transcoding: FFmpeg (via Docker container)
+- Storage: AWS S3 (for videos)
 
 ---
 
-## 🔧 Installation & Setup
+## Installation & Setup
 
-### 1. Clone Repository
-```
+### Clone Repository
+```bash
 git clone <your-repo-url>
 cd <your-project-folder>
 ```
 
-### 2. Backend Setup
+### Start Dependencies (Kafka, Zookeeper, Redis, FFmpeg)
+```bash
+docker-compose up -d
 ```
+
+### Backend Setup
+```bash
 cd backend
 npm install
 node server.js
 ```
-- Runs on **http://localhost:8000**
+Runs on: http://localhost:8000
 
-### 3. Frontend Setup
-```
+### Frontend Setup
+```bash
 cd frontend
 npm install
 npm start
 ```
-- Runs on **http://localhost:3000**
+Runs on: http://localhost:3000
 
-### 4. Redis
-Make sure Redis is running locally on **port 6379**:
-```
-redis-server
-```
-
-### 5. FFmpeg Setup
-FFmpeg is required for video transcoding and processing.  
-
-#### Install FFmpeg on Linux (Ubuntu/Debian)
-```
-sudo apt update
-sudo apt install ffmpeg -y
+### Using FFmpeg in Container
+```bash
+docker exec -it ffmpeg ffmpeg -i /data/input.mp4 -c:v libx264 /data/output.mp4
 ```
 
-#### Install FFmpeg on Mac (Homebrew)
-```
-brew install ffmpeg
-```
-
-#### Install FFmpeg on Windows
-1. Download from: https://ffmpeg.org/download.html
-2. Extract and add the `bin` folder to your **PATH** environment variable.
-
-Verify installation:
-```
-ffmpeg -version
-```
+Mount videos into the `./videos` folder (mapped to `/data` in the container).
 
 ---
 
-## 🔑 Login Credentials
-
-You can use the following test accounts:
-
+## Login Credentials
 | Role   | Email              | Password |
 |--------|--------------------|----------|
 | Admin  | admin@gmail.com    | 123456   |
@@ -83,28 +63,33 @@ You can use the following test accounts:
 
 ---
 
-## 📂 Project Structure
+## Project Structure
 ```
 project-root/
-│── backend/         # Express + Node.js API
+│── backend/             # Express + Node.js API
 │   └── server.js
-│── frontend/        # React app
+│── frontend/            # React app
+│── docker-compose.yml   # Zookeeper + Kafka + Redis + FFmpeg
+│── videos/              # Local folder for video files (mounted into FFmpeg)
 │── README.md
 ```
 
 ---
 
-## ⚡ Features
+## Features
 - User authentication & role-based access
 - Multipart video upload to AWS S3
-- Video streaming with **range requests**
-- Redis caching for performance
-- Video transcoding with FFmpeg
+- Video streaming with range requests
+- Redis caching for performance & session management
+- Kafka for event-driven workflows (video encoding, notifications, logs)
+- FFmpeg for transcoding and adaptive bitrate streaming
 - Secure access with JWT authentication
 
 ---
 
-## 📝 Notes
+## Notes
 - Ensure MongoDB is running locally or update `.env` with your connection string.
-- Update `.env` in backend with your AWS S3 credentials and secret keys.
-- FFmpeg must be installed and accessible in your system PATH.
+- Update `.env` in backend with AWS S3 credentials, Redis host/port, Kafka broker URL.
+- Run all dependencies via `docker-compose up -d`.
+- Place video files in `./videos` to access them inside the FFmpeg container.
+

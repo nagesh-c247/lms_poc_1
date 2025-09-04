@@ -1,4 +1,6 @@
-require("dotenv").config();
+const path = require("path");
+require("dotenv").config({ path: path.resolve(__dirname, "../.env") });
+
 const AWS = require("aws-sdk");
 
 const s3 = new AWS.S3({
@@ -9,7 +11,7 @@ const s3 = new AWS.S3({
     timeout: 30000, // 30s timeout for S3 requests
     connectTimeout: 5000,
   },
-  maxRetries: 3, // Retry up to 3 times
+  maxRetries: 1, // Retry up to 3 times
   retryDelayOptions: { base: 200 }, // 200ms base delay
 });
 
